@@ -1,119 +1,295 @@
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Home, ArrowLeft, BarChart3 } from "lucide-react";
+import { Home, ArrowLeft, BarChart3, RefreshCw } from "lucide-react";
 import TopRightControls from "@/components/TopRightControls";
-import { getEvents } from "@/lib/tracking";
+import { Button } from "@/components/ui/button";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { getAnalyticsStats, type AnalyticsStats } from "@/lib/analytics";
+import { useToast } from "@/hooks/use-toast";
 
-function groupBy<T, K extends string | number>(arr: T[], key: (t: T) => K) {
-  return arr.reduce((acc, item) => {
-    const k = key(item);
-    (acc as any)[k] = ((acc as any)[k] || 0) + 1;
-    return acc;
-  }, {} as Record<K, number>);
-}
-
-function BarChart({ data }: { data: { label: string; value: number }[] }) {
-  const max = Math.max(1, ...data.map(d => d.value));
-  return (
-    <svg viewBox={`0 0 100 ${data.length * 12}`} className="w-full border rounded">
-      {data.map((d, i) => (
-        <g key={i} transform={`translate(0, ${i * 12})`}>
-          <rect x={0} y={2} width={(d.value / max) * 90} height={8} fill="hsl(var(--primary))" />
-          <text x={0} y={10} fontSize={3} fill="hsl(var(--foreground))">{d.label.slice(0, 20)}</text>
-          <text x={92} y={10} fontSize={3} fill="hsl(var(--foreground))">{d.value}</text>
-        </g>
-      ))}
-    </svg>
-  );
-}
+const COLORS = [
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+];
 
 export default function AdminAnalytics() {
-  const [from, setFrom] = useState<string>("");
-  const [to, setTo] = useState<string>("");
+  const [stats, setStats] = useState<AnalyticsStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const { toast } = useToast();
 
-  const { clicks, pvs, kpis } = useMemo(() => {
-    const events = getEvents();
-    const fromTs = from ? new Date(from).getTime() : -Infinity;
-    const toTs = to ? new Date(to).getTime() + 24*3600*1000 : Infinity;
-    const filtered = events.filter(e => e.ts >= fromTs && e.ts <= toTs);
-    const clickEvents = filtered.filter(e => e.type === "element_click");
-    const pvEvents = filtered.filter(e => e.type === "page_view");
+  useEffect(() => {
+    loadAnalytics();
+  }, []);
 
-    const clickCounts = groupBy(clickEvents, e => (e.meta?.label || "unknown") as string);
-    const pvCounts = groupBy(pvEvents, e => e.path);
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true);
 
-    const clicks = Object.entries(clickCounts).map(([label, value]) => ({ label, value: value as number }))
-      .sort((a,b)=>b.value-a.value);
-    const pvs = Object.entries(pvCounts).map(([label, value]) => ({ label, value: value as number }))
-      .sort((a,b)=>b.value-a.value);
-
-    // Uptime approximations by device
-    const byDevice = new Map<string, { first: number; last: number }>();
-    for (const e of filtered) {
-      const d = byDevice.get(e.deviceId) || { first: e.ts, last: e.ts };
-      d.first = Math.min(d.first, e.ts);
-      d.last = Math.max(d.last, e.ts);
-      byDevice.set(e.deviceId, d);
-    }
-    const totalUserTimeMs = Array.from(byDevice.values()).reduce((sum, d) => sum + (d.last - d.first), 0);
-    const sinceFirstEvent = filtered.length ? (Date.now() - Math.min(...filtered.map(e=>e.ts))) : 0;
-
-    return {
-      clicks,
-      pvs,
-      kpis: {
-        mostPopular: clicks[0]?.label || "-",
-        leastPopular: clicks[clicks.length-1]?.label || "-",
-        dbUptime: "N/A (client-only)",
-        appUptime: Math.round(sinceFirstEvent/3600000) + "h",
-        totalUserTime: Math.round(totalUserTimeMs/3600000) + "h",
+      const filters: any = {};
+      if (startDate) {
+        filters.startDate = new Date(startDate).toISOString();
       }
-    };
-  }, [from, to]);
+      if (endDate) {
+        filters.endDate = new Date(endDate).toISOString();
+      }
+
+      const analyticsData = await getAnalyticsStats(filters);
+      setStats(analyticsData);
+    } catch (error: any) {
+      console.error("Error loading analytics:", error);
+      toast({
+        title: "Error loading analytics",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyFilters = async () => {
+    await loadAnalytics();
+  };
+
+  const handleClearFilters = () => {
+    setStartDate("");
+    setEndDate("");
+    loadAnalytics();
+  };
+
+  if (loading && !stats) {
+    return (
+      <div className="page-container">
+        <TopRightControls />
+        <div className="flex items-center justify-center min-h-screen">
+          <p>Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
       <TopRightControls />
-      <header className="flex items-center justify-between mb-8 w-full max-w-xl">
+      <header className="flex items-center justify-between mb-8 w-full max-w-6xl">
         <div className="flex items-center gap-2">
           <Link to="/admin">
-            <button className="home-button" aria-label="Back to Admin">
-              <ArrowLeft className="inline mr-2" /> Back
-            </button>
+            <Button variant="ghost" size="icon" aria-label="Back to Admin">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
           </Link>
           <Link to="/">
-            <button className="home-button" aria-label="Go Home">
-              <Home className="inline mr-2" /> Home
-            </button>
+            <Button variant="ghost" size="icon" aria-label="Go home">
+              <Home className="h-5 w-5" />
+            </Button>
           </Link>
         </div>
-        <h1 className="text-2xl font-bold flex items-center gap-2"><BarChart3 size={20}/> Analytics</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <BarChart3 size={20} /> Analytics
+        </h1>
         <div className="w-10" />
       </header>
 
-      <div className="w-full max-w-xl space-y-6">
-        <div className="flex gap-2">
-          <input type="date" className="home-button" value={from} onChange={e=>setFrom(e.target.value)} />
-          <input type="date" className="home-button" value={to} onChange={e=>setTo(e.target.value)} />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-          <div className="p-4 border rounded"><div className="text-sm text-muted-foreground">Most Popular</div><div className="text-xl font-bold">{kpis.mostPopular}</div></div>
-          <div className="p-4 border rounded"><div className="text-sm text-muted-foreground">Least Popular</div><div className="text-xl font-bold">{kpis.leastPopular}</div></div>
-          <div className="p-4 border rounded"><div className="text-sm text-muted-foreground">DB Uptime</div><div className="text-xl font-bold">{kpis.dbUptime}</div></div>
-          <div className="p-4 border rounded md:col-span-3"><div className="text-sm text-muted-foreground">Webapp Uptime Since First Event</div><div className="text-xl font-bold">{kpis.appUptime}</div></div>
-          <div className="p-4 border rounded md:col-span-3"><div className="text-sm text-muted-foreground">Overall Total User Time</div><div className="text-xl font-bold">{kpis.totalUserTime}</div></div>
-        </div>
-
-        <div>
-          <h2 className="font-semibold mb-2">Top Clicked Elements</h2>
-          <BarChart data={clicks.slice(0,10)} />
-        </div>
-        <div>
-          <h2 className="font-semibold mb-2">Page Views</h2>
-          <BarChart data={pvs.slice(0,10)} />
+      {/* Filters */}
+      <div className="w-full max-w-6xl mb-6 p-4 border rounded">
+        <div className="flex gap-2 flex-wrap items-end">
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm font-medium block mb-1">Start Date</label>
+            <input
+              type="datetime-local"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="home-button w-full"
+            />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm font-medium block mb-1">End Date</label>
+            <input
+              type="datetime-local"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="home-button w-full"
+            />
+          </div>
+          <Button onClick={handleApplyFilters} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Apply
+          </Button>
+          <Button onClick={handleClearFilters} variant="outline">
+            Clear
+          </Button>
         </div>
       </div>
+
+      {stats && (
+        <>
+          {/* KPI Cards */}
+          <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="border rounded p-4 text-center">
+              <div className="text-3xl font-bold">{stats.totalPageViews}</div>
+              <div className="text-sm text-muted-foreground">Total Page Views</div>
+            </div>
+            <div className="border rounded p-4 text-center">
+              <div className="text-3xl font-bold">{stats.totalSearches}</div>
+              <div className="text-sm text-muted-foreground">Total Searches</div>
+            </div>
+            <div className="border rounded p-4 text-center">
+              <div className="text-3xl font-bold">{stats.topUsers.length}</div>
+              <div className="text-sm text-muted-foreground">Active Users</div>
+            </div>
+            <div className="border rounded p-4 text-center">
+              <div className="text-3xl font-bold">{stats.topBrands.length}</div>
+              <div className="text-sm text-muted-foreground">Brands Viewed</div>
+            </div>
+          </div>
+
+          {/* Charts */}
+          <div className="w-full max-w-6xl space-y-6">
+            {/* Activity by Hour - Line Chart */}
+            {stats.activityByHour.length > 0 && (
+              <div className="border rounded p-4">
+                <h2 className="font-semibold text-lg mb-4">Activity Over Time</h2>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={stats.activityByHour}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#3b82f6"
+                      name="Events"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Top Pages - Bar Chart */}
+              {stats.pageViews.length > 0 && (
+                <div className="border rounded p-4">
+                  <h2 className="font-semibold text-lg mb-4">Top Pages</h2>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={stats.pageViews}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="path" angle={-45} textAnchor="end" height={80} />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#ef4444" name="Views" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Brand Popularity - Pie Chart */}
+              {stats.topBrands.length > 0 && (
+                <div className="border rounded p-4">
+                  <h2 className="font-semibold text-lg mb-4">Brand Popularity</h2>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={stats.topBrands}
+                        dataKey="count"
+                        nameKey="brand"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label
+                      >
+                        {stats.topBrands.map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {/* Top Searched Error Codes */}
+            {stats.topSearchedCodes.length > 0 && (
+              <div className="border rounded p-4">
+                <h2 className="font-semibold text-lg mb-4">Most Searched Error Codes</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {stats.topSearchedCodes.map((item, i) => (
+                    <div
+                      key={i}
+                      className="p-3 border rounded bg-muted/50 flex justify-between items-center"
+                    >
+                      <span className="font-semibold">{item.code}</span>
+                      <span className="text-sm text-muted-foreground">{item.count} searches</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Error Code Frequency */}
+            {stats.errorCodeFrequency.length > 0 && (
+              <div className="border rounded p-4">
+                <h2 className="font-semibold text-lg mb-4">Error Code Frequency</h2>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart
+                    data={stats.errorCodeFrequency}
+                    layout="vertical"
+                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="code" type="category" width={100} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#8b5cf6" name="Occurrences" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Most Active Users */}
+            {stats.topUsers.length > 0 && (
+              <div className="border rounded p-4">
+                <h2 className="font-semibold text-lg mb-4">Most Active Users</h2>
+                <div className="space-y-2">
+                  {stats.topUsers.slice(0, 10).map((user, i) => (
+                    <div key={i} className="flex justify-between items-center p-2 border rounded">
+                      <span className="text-sm font-mono">{user.userId.slice(0, 8)}...</span>
+                      <span className="text-sm text-muted-foreground">{user.count} events</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

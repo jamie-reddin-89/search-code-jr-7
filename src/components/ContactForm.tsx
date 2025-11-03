@@ -1,5 +1,4 @@
-import * as React from "react";
-const { useState } = React;
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Input } from "./ui/input";
@@ -26,7 +25,7 @@ export default function ContactForm() {
     setMessage("");
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
       toast({ title: "Please fill in all fields", variant: "destructive" });
