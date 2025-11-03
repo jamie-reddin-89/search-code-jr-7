@@ -68,8 +68,28 @@ export default function Admin() {
   useEffect(() => {
     if (isAdmin) {
       loadErrorCodes();
+      loadDevices();
     }
   }, [isAdmin]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToDevices((newDevices) => {
+      setDevices(newDevices);
+    });
+    return unsubscribe;
+  }, []);
+
+  async function loadDevices() {
+    try {
+      setDevicesLoading(true);
+      const allDevices = await getAllDevices();
+      setDevices(allDevices);
+    } catch (error) {
+      console.error("Error loading devices:", error);
+    } finally {
+      setDevicesLoading(false);
+    }
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
