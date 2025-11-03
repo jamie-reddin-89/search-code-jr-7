@@ -7,6 +7,7 @@ import { EquipmentScanner } from "@/components/EquipmentScanner";
 import { TroubleshootingWizard } from "@/components/TroubleshootingWizard";
 import { PhotoDiagnosis } from "@/components/PhotoDiagnosis";
 import { CostEstimator } from "@/components/CostEstimator";
+import { Tooltip } from "@/components/Tooltip";
 
 const buttonNames = [
   "Joule Victorum",
@@ -33,11 +34,11 @@ const Index = () => {
         <h1 className="header">JR Heat Pumps</h1>
 
         <div className="flex flex-wrap gap-2 justify-center mb-6">
-          <ServiceHistory />
-          <EquipmentScanner />
-          <TroubleshootingWizard />
-          <PhotoDiagnosis />
-          <CostEstimator />
+          <Tooltip content="View service history"><ServiceHistory /></Tooltip>
+          <Tooltip content="Scan equipment QR code"><EquipmentScanner /></Tooltip>
+          <Tooltip content="Open troubleshooting wizard"><TroubleshootingWizard /></Tooltip>
+          <Tooltip content="Upload photo for diagnosis"><PhotoDiagnosis /></Tooltip>
+          <Tooltip content="Estimate repair costs"><CostEstimator /></Tooltip>
         </div>
 
         <nav className="button-container">
