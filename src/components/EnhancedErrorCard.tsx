@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import * as React from "react";
+const { useState, useEffect } = React;
 import { Star, StarOff, ExternalLink, Video, Clock, Wrench, Edit } from "lucide-react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useUserRole } from "@/hooks/useUserRole";
