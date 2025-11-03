@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import * as React from "react";
+const { useEffect, useState } = React;
 import { supabase } from "@/integrations/supabase/client";
 import { trackUserActivity, createUserSession } from "@/lib/userTracking";
 
