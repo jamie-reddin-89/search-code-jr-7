@@ -13,6 +13,7 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminFixSteps from "./pages/AdminFixSteps";
 import AdminAppLogs from "./pages/AdminAppLogs";
 import AdminAddErrorInfo from "./pages/AdminAddErrorInfo";
+import AdminAddErrorCode from "./pages/AdminAddErrorCode";
 import AdminAddDevice from "./pages/AdminAddDevice";
 import ButtonPage from "./components/ButtonPage";
 import InstallPrompt from "./components/InstallPrompt";
