@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import * as React from "react";
+const { useEffect, useState } = React;
 import { Link } from "react-router-dom";
 import { Star, Home } from "lucide-react";
 import TopRightControls from "@/components/TopRightControls";
