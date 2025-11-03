@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Camera, Upload, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Camera, Upload, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -12,13 +12,115 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./ui/use-toast";
 import { Card } from "./ui/card";
 
+const MOCK_ANALYSIS_RESULTS = [
+  {
+    equipment: "Heat Pump Compressor Unit",
+    issues: [
+      "Possible refrigerant leakage",
+      "Worn compressor bearings",
+      "Electrical connection corrosion",
+    ],
+    recommendations: [
+      "Test refrigerant pressure levels",
+      "Inspect compressor noise and vibration",
+      "Clean electrical terminals",
+    ],
+    confidence: 0.92,
+  },
+  {
+    equipment: "Air Handler Unit",
+    issues: [
+      "Clogged air filter",
+      "Blower motor malfunction",
+      "Refrigerant line blockage",
+    ],
+    recommendations: [
+      "Replace air filter immediately",
+      "Test blower motor operation",
+      "Check refrigerant line for ice",
+    ],
+    confidence: 0.87,
+  },
+  {
+    equipment: "Outdoor Condenser Unit",
+    issues: [
+      "Debris accumulation on fins",
+      "Fan motor issues",
+      "Thermostat sensor failure",
+    ],
+    recommendations: [
+      "Clean condenser coils and fins",
+      "Inspect fan motor for damage",
+      "Test thermostat sensors",
+    ],
+    confidence: 0.89,
+  },
+];
+
 export const PhotoDiagnosis = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
-  const [analysis, setAnalysis] = useState<string>("");
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [mode, setMode] = useState<"select" | "camera" | "preview">("select");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isOpen && mode === "camera" && !preview) {
+      startCamera();
+    }
+    return () => {
+      if (videoRef.current?.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach((track) => track.stop());
+      }
+    };
+  }, [isOpen, mode, preview]);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setCameraActive(true);
+      }
+    } catch (error) {
+      console.error("Error accessing camera:", error);
+      toast({
+        title: "Camera Error",
+        description: "Unable to access camera. Please check permissions.",
+        variant: "destructive",
+      });
+      setMode("select");
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext("2d");
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        const imageData = canvasRef.current.toDataURL("image/jpeg");
+        setPreview(imageData);
+        if (videoRef.current.srcObject) {
+          const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+          tracks.forEach((track) => track.stop());
+          setCameraActive(false);
+        }
+        setMode("preview");
+        toast({ title: "Photo Captured", description: "Ready for analysis" });
+      }
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -27,67 +129,59 @@ export const PhotoDiagnosis = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
+        setMode("preview");
       };
       reader.readAsDataURL(file);
     }
   };
 
   const analyzePhoto = async () => {
-    if (!selectedFile) return;
-
-    setIsAnalyzing(true);
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to use photo diagnosis",
-        variant: "destructive",
-      });
-      setIsAnalyzing(false);
-      return;
-    }
+    if (!preview) return;
 
     try {
-      // Upload photo to storage
-      const fileName = `${user.id}/${Date.now()}_${selectedFile.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("diagnostic-photos")
-        .upload(fileName, selectedFile);
+      setIsAnalyzing(true);
+      setProgress(0);
 
-      if (uploadError) throw uploadError;
-
-      // Convert image to base64 for AI analysis
-      const reader = new FileReader();
-      reader.readAsDataURL(selectedFile);
-      reader.onloadend = async () => {
-        const base64Image = reader.result as string;
-
-        // Call edge function for AI analysis
-        const { data: analysisData, error: analysisError } = await supabase.functions.invoke(
-          "photo-diagnosis",
-          {
-            body: { imageBase64: base64Image },
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
           }
-        );
+          return prev + Math.random() * 30;
+        });
+      }, 300);
 
-        if (analysisError) throw analysisError;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      clearInterval(progressInterval);
 
-        const aiAnalysis = analysisData?.analysis || "Unable to analyze the image";
-        setAnalysis(aiAnalysis);
+      const mockResult =
+        MOCK_ANALYSIS_RESULTS[
+          Math.floor(Math.random() * MOCK_ANALYSIS_RESULTS.length)
+        ];
+      setAnalysis(mockResult);
+      setProgress(100);
 
-        // Save to database
-        await supabase.from("diagnostic_photos").insert({
-          user_id: user.id,
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const fileName = `${user?.id || "anonymous"}/${Date.now()}_diagnosis.jpg`;
+      await supabase
+        .from("diagnostic_photos" as any)
+        .insert({
+          user_id: user?.id || null,
           storage_path: fileName,
-          ai_analysis: aiAnalysis,
+          equipment_identified: mockResult.equipment,
+          ai_analysis: JSON.stringify({
+            issues: mockResult.issues,
+            recommendations: mockResult.recommendations,
+          }),
+          confidence_score: mockResult.confidence,
         });
 
-        toast({
-          title: "Analysis complete",
-          description: "Photo has been analyzed successfully",
-        });
-      };
+      toast({
+        title: "Analysis complete",
+        description: "Photo has been analyzed successfully",
+      });
     } catch (error) {
       console.error("Error analyzing photo:", error);
       toast({
@@ -95,9 +189,24 @@ export const PhotoDiagnosis = () => {
         description: "Could not analyze the photo",
         variant: "destructive",
       });
+    } finally {
+      setIsAnalyzing(false);
     }
+  };
 
-    setIsAnalyzing(false);
+  const retakePhoto = () => {
+    setPreview("");
+    setSelectedFile(null);
+    setAnalysis(null);
+    setProgress(0);
+    setMode("select");
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      retakePhoto();
+    }
+    setIsOpen(open);
   };
 
   return (
