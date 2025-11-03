@@ -263,7 +263,7 @@ export const Settings = () => {
                 <a href="https://jayreddin.github.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Jamie Reddin</a>
               </p>
               <p>
-                <span className="font-medium">Version:</span> 1.8.0
+                <span className="font-medium">Version:</span> 1.8.1
               </p>
 
               <p>
