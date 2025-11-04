@@ -20,7 +20,7 @@ Phase 1 — Admin insert flows + app-wide propagation
 - [x] Replace hardcoded systemNames in Admin error-code form with dynamic model list from Supabase (src/pages/Admin.tsx)
 - [x] Use generateRouteSlug(brand, model) or model.id as value; label “Brand — Model”
 - [x] Make home buttons dynamic from brands/models (src/pages/Index.tsx), remove buttonNames array
-- [x] Verify new items appear app-wide in real time without refresh
+- [x] Verify new items appear app-wide in real time without refresh 
 
 Phase 2 — Users list shows all signed-up users
 - [ ] Create Edge Function admin-users to fetch Auth users via Admin API with admin check
