@@ -10,9 +10,14 @@ export const useAnalytics = () => {
         user_id: userId || null,
       });
     } catch (error) {
-      // ignore if backend not available
-    } finally {
+      // Silently fail - analytics is non-critical
+      console.debug("Search analytics tracking failed (non-critical):", error);
+    }
+    try {
       await trackEvent("search", { systemName, errorCode }, undefined, userId);
+    } catch (error) {
+      // Silently fail - event tracking is non-critical
+      console.debug("Event tracking failed (non-critical):", error);
     }
   };
 
