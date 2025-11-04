@@ -4,7 +4,7 @@ import { Home, Plus, Edit, Trash2, Users, BarChart3, Wrench, ScrollText, FilePlu
 import TopRightControls from "@/components/TopRightControls";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
-import { getAllDevices, subscribeToDevices, type DeviceWithBrand } from "@/lib/deviceManager";
+import { getAllDevices, subscribeToDevices, generateRouteSlug, type DeviceWithBrand } from "@/lib/deviceManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,19 +25,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-const systemNames = [
-  "joule-victorum",
-  "joule-samsung",
-  "joule-modular-air",
-  "dedietrich-strateo",
-  "lg-thermia",
-  "hitachi-yutaki",
-  "panasonic-aquarea",
-  "grant-areona",
-  "itec-thermia",
-  "smart-control",
-  "system-status",
-];
 
 interface ErrorCode {
   id: string;
@@ -278,6 +265,7 @@ export default function Admin() {
               errorCode={editingCode}
               onSave={handleSave}
               onCancel={() => setIsDialogOpen(false)}
+              devices={devices}
             />
           </DialogContent>
         </Dialog>
@@ -339,6 +327,7 @@ function ErrorCodeForm({
   errorCode: ErrorCode | null;
   onSave: (data: any) => void;
   onCancel: () => void;
+  devices: DeviceWithBrand[];
 }) {
   const [formData, setFormData] = useState<any>(
     errorCode || {
@@ -374,11 +363,15 @@ function ErrorCodeForm({
             <SelectValue placeholder="Select system" />
           </SelectTrigger>
           <SelectContent>
-            {systemNames.map((name) => (
-              <SelectItem key={name} value={name}>
-                {name}
-              </SelectItem>
-            ))}
+            {devices.map((d) => {
+              const value = generateRouteSlug(d.brand?.name || "", d.name);
+              const label = `${d.brand?.name || "Unknown Brand"} — ${d.name}`;
+              return (
+                <SelectItem key={d.id} value={value}>
+                  {label}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
