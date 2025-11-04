@@ -52,7 +52,7 @@ const Index = () => {
             const slug = generateRouteSlug(d.brand?.name || "", d.name);
             return (
               <Tooltip key={d.id} content={`Open ${name} page`}>
-                <Link to={`/${slug}`} className="nav-button">
+                <Link to={`/device/${slug}`} className="nav-button">
                   {name}
                 </Link>
               </Tooltip>
