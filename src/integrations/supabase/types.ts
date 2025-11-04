@@ -137,6 +137,8 @@ export type Database = {
           meaning: string
           related_codes: string[] | null
           solution: string
+          brand_id: string | null
+          model_id: string | null
           system_name: string
           troubleshooting_steps: Json | null
           updated_at: string | null
@@ -153,6 +155,8 @@ export type Database = {
           meaning: string
           related_codes?: string[] | null
           solution: string
+          brand_id?: string | null
+          model_id?: string | null
           system_name: string
           troubleshooting_steps?: Json | null
           updated_at?: string | null
@@ -169,6 +173,8 @@ export type Database = {
           meaning?: string
           related_codes?: string[] | null
           solution?: string
+          brand_id?: string | null
+          model_id?: string | null
           system_name?: string
           troubleshooting_steps?: Json | null
           updated_at?: string | null
