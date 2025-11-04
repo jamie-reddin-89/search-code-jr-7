@@ -56,12 +56,12 @@ export default function AdminAddDevice() {
     try {
       setLoading(true);
       const [brandsData, modelsData, categoriesData, tagsData, mediaData, urlsData] = await Promise.all([
-        supabase.from("brands" as any).select("*"),
-        supabase.from("models" as any).select("*"),
-        supabase.from("categories" as any).select("*"),
-        supabase.from("tags" as any).select("*"),
-        supabase.from("media" as any).select("*"),
-        supabase.from("urls" as any).select("*"),
+        supabase.from("public.brands" as any).select("*"),
+        supabase.from("public.models" as any).select("*"),
+        supabase.from("public.categories" as any).select("*"),
+        supabase.from("public.tags" as any).select("*"),
+        supabase.from("public.media" as any).select("*"),
+        supabase.from("public.urls" as any).select("*"),
       ]);
 
       setItems({
@@ -157,28 +157,28 @@ export default function AdminAddDevice() {
       switch (dialogMode) {
         case "brand":
           dataToInsert.logo_url = formData.value || null;
-          await supabase.from("brands" as any).insert([dataToInsert]);
+          await supabase.from("public.brands" as any).insert([dataToInsert]);
           break;
         case "model":
           dataToInsert.brand_id = formData.brand_id;
           dataToInsert.specs = formData.value || null;
-          await supabase.from("models" as any).insert([dataToInsert]);
+          await supabase.from("public.models" as any).insert([dataToInsert]);
           break;
         case "category":
-          await supabase.from("categories" as any).insert([dataToInsert]);
+          await supabase.from("public.categories" as any).insert([dataToInsert]);
           break;
         case "tag":
-          await supabase.from("tags" as any).insert([dataToInsert]);
+          await supabase.from("public.tags" as any).insert([dataToInsert]);
           break;
         case "media":
           dataToInsert.url = formData.value;
           dataToInsert.type = formData.media_type || "image";
-          await supabase.from("media" as any).insert([dataToInsert]);
+          await supabase.from("public.media" as any).insert([dataToInsert]);
           break;
         case "url":
           dataToInsert.url = formData.value;
           dataToInsert.category = formData.category || null;
-          await supabase.from("urls" as any).insert([dataToInsert]);
+          await supabase.from("public.urls" as any).insert([dataToInsert]);
           break;
       }
 
@@ -206,12 +206,12 @@ export default function AdminAddDevice() {
 
     try {
       const tableMap: Record<string, string> = {
-        brand: "brands",
-        model: "models",
-        category: "categories",
-        tag: "tags",
-        media: "media",
-        url: "urls",
+        brand: "public.brands",
+        model: "public.models",
+        category: "public.categories",
+        tag: "public.tags",
+        media: "public.media",
+        url: "public.urls",
       };
 
       await supabase.from(tableMap[type] as any).delete().eq("id", id);
